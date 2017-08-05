@@ -19,8 +19,10 @@ const (
 	p = 1
 )
 
-// Create
-// array index starts from left.
+// Create derives a key from the password, salt, and cost parameters, returning
+// a byte slice of length keyLen that can be used as cryptographic key.
+//
+// output format
 // <---keylen---><----16----><--4--><--4--><--4--><----32---->
 //    password       salt       N      r      p   sha-256 hash
 func Create(password string, keyLen int) ([]byte, error) {
@@ -64,12 +66,12 @@ func Create(password string, keyLen int) ([]byte, error) {
 }
 
 // Verify compare password and derivated key
-func Verify(password string, target []byte) (bool, error) {
-	keylen := len(target) - 60
-	pass := target[:keylen]
+func Verify(password string, dk []byte) (bool, error) {
+	keylen := len(dk) - 60
+	pass := dk[:keylen]
 
 	// Get the salt
-	salt := target[keylen : keylen+16]
+	salt := dk[keylen : keylen+16]
 
 	// Get the params
 	var N, r, p int32
@@ -78,47 +80,40 @@ func Verify(password string, target []byte) (bool, error) {
 	rPad := NPad + 4
 	pPad := rPad + 4
 
-	// byte 48:52 for N
-	err := binary.Read(bytes.NewReader(target[keylen+16:NPad]), binary.LittleEndian, &N)
+	// byte for N
+	err := binary.Read(bytes.NewReader(dk[keylen+16:NPad]), binary.LittleEndian, &N)
 	if err != nil {
-		log.Printf("binary.Read failed for N: %s\n", err)
 		return false, err
 	}
 
-	// byte 52:56 for r
-	err = binary.Read(bytes.NewReader(target[NPad:rPad]), binary.LittleEndian, &r)
+	// byte for r
+	err = binary.Read(bytes.NewReader(dk[NPad:rPad]), binary.LittleEndian, &r)
 	if err != nil {
-		log.Printf("binary.Read failed for r: %s\n", err)
 		return false, err
 	}
 
-	// byte 56:60 for p
-	err = binary.Read(bytes.NewReader(target[rPad:pPad]), binary.LittleEndian, &p)
+	// byte for p
+	err = binary.Read(bytes.NewReader(dk[rPad:pPad]), binary.LittleEndian, &p)
 	if err != nil {
-		log.Printf("binary.Read failed for p: %s\n", err)
 		return false, err
 	}
 
 	key, err := scrypt.Key([]byte(password), salt, int(N), int(r), int(p), keylen)
 	if err != nil {
-		log.Printf("Error in deriving passphrase: %s\n", err)
 		return false, err
 	}
 
 	// <--32-->
-	targetHash := target[pPad:]
-	// Doing the sha-256 checksum at the last because we want the attacker
-	// to spend as much time possible cracking
-	hashDigest := sha256.New()
-	_, err = hashDigest.Write(target[:pPad])
+	dkHash := dk[pPad:]
+	h := sha256.New()
+	_, err = h.Write(dk[:pPad])
 	if err != nil {
-		log.Printf("hash_digest.Write failed: %s\n", err)
 		return false, err
 	}
-	sourceHash := hashDigest.Sum(nil)
+	keyHash := h.Sum(nil)
 
 	// ConstantTimeCompare returns ints. Converting it to bool
 	keyComp := subtle.ConstantTimeCompare(key, pass) != 0
-	hashComp := subtle.ConstantTimeCompare(targetHash, sourceHash) != 0
+	hashComp := subtle.ConstantTimeCompare(dkHash, keyHash) != 0
 	return keyComp && hashComp, nil
 }
