@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/binary"
+	"os"
 
 	"github.com/nbari/crypto"
 
@@ -18,17 +19,22 @@ const (
 	p = 1
 )
 
-// Create derives a key from the password, salt, and cost parameters, returning
-// a byte slice of length keyLen that can be used as cryptographic key.
+// Create derives a key from the password+pepper, salt, and cost
+// parameters, returning a byte slice of length keyLen that can be used as
+// cryptographic key.
+//
+// pepper is taken from environment var SCRYPT_PEPPER
 //
 // output format
 // <---keylen---><----16----><--4--><--4--><--4--><----32---->
-//    password       salt       N      r      p   sha-256 hash
+//   pass+pepper     salt       N      r      p   sha-256 hash
 func Create(password string, keyLen int) ([]byte, error) {
 	salt, err := crypto.GenerateSalt(16)
 	if err != nil {
 		return nil, err
 	}
+
+	password += os.Getenv("SCRYPT_PEPPER")
 
 	key, err := scrypt.Key([]byte(password), salt, N, r, p, keyLen)
 	if err != nil {
@@ -93,6 +99,8 @@ func Verify(password string, dk []byte) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	password += os.Getenv("SCRYPT_PEPPER")
 
 	key, err := scrypt.Key([]byte(password), salt, int(N), int(r), int(p), keylen)
 	if err != nil {
