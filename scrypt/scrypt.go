@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/binary"
-	"log"
 
 	"github.com/nbari/crypto"
 
@@ -33,7 +32,6 @@ func Create(password string, keyLen int) ([]byte, error) {
 
 	key, err := scrypt.Key([]byte(password), salt, N, r, p, keyLen)
 	if err != nil {
-		log.Printf("Error in deriving passphrase: %s\n", err)
 		return nil, err
 	}
 
@@ -45,7 +43,6 @@ func Create(password string, keyLen int) ([]byte, error) {
 	for _, elem := range [3]int{N, r, p} {
 		err = binary.Write(buf, binary.LittleEndian, int32(elem))
 		if err != nil {
-			log.Printf("binary.Write failed: %s\n", err)
 			return nil, err
 		}
 		key = append(key, buf.Bytes()...)
@@ -56,7 +53,6 @@ func Create(password string, keyLen int) ([]byte, error) {
 	hash_digest := sha256.New()
 	hash_digest.Write(key)
 	if err != nil {
-		log.Printf("hash_digest.Write failed: %s\n", err)
 		return nil, err
 	}
 	hash := hash_digest.Sum(nil)
