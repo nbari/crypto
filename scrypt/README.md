@@ -22,7 +22,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("ok = %+v\n", ok)
+    if !ok {
+       log.Fatal("Could not verify...")
+       return
+    }
+
 }
 ```
 
@@ -42,10 +46,8 @@ The key returned is of this format:
 
 ```pre
 array index starts from left.
-<---keyLen---><---16---><--4--><--4--><--4--><----32---->
-   password      salt      N      r      p   sha-256 hash
+<---keyLen---><---16---><--4--><--4--><--4-->
+   password      salt      N      r      p
 ```
 
-A SHA-256 of the entire content(dKey+salt+n+r+p) is computed and stored at the end to just verify the integrity of the content.
-
-Based on: https://github.com/agnivade/easy-scrypt/
+Based on https://github.com/agnivade/easy-scrypt/ just removing the SHA-256 hash.

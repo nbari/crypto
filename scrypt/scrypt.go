@@ -2,7 +2,6 @@ package scrypt
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/binary"
 	"os"
@@ -26,8 +25,8 @@ const (
 // pepper is taken from environment var SCRYPT_PEPPER
 //
 // output format
-// <---keylen---><----16----><--4--><--4--><--4--><----32---->
-//   pass+pepper     salt       N      r      p   sha-256 hash
+// <---keylen---><----16----><--4--><--4--><--4-->
+//   pass+pepper     salt       N      r      p
 func Create(password string, keyLen int) ([]byte, error) {
 	salt, err := crypto.GenerateSalt(16)
 	if err != nil {
@@ -55,21 +54,12 @@ func Create(password string, keyLen int) ([]byte, error) {
 		buf.Reset()
 	}
 
-	// appending the sha-256 of the entire header at the end
-	hash_digest := sha256.New()
-	hash_digest.Write(key)
-	if err != nil {
-		return nil, err
-	}
-	hash := hash_digest.Sum(nil)
-	key = append(key, hash...)
-
 	return key, nil
 }
 
 // Verify compare password and derivated key
 func Verify(password string, dk []byte) (bool, error) {
-	keylen := len(dk) - 60
+	keylen := len(dk) - 28
 	pass := dk[:keylen]
 
 	// Get the salt
@@ -107,17 +97,5 @@ func Verify(password string, dk []byte) (bool, error) {
 		return false, err
 	}
 
-	// <--32-->
-	dkHash := dk[pPad:]
-	h := sha256.New()
-	_, err = h.Write(dk[:pPad])
-	if err != nil {
-		return false, err
-	}
-	keyHash := h.Sum(nil)
-
-	// ConstantTimeCompare returns ints. Converting it to bool
-	keyComp := subtle.ConstantTimeCompare(key, pass) != 0
-	hashComp := subtle.ConstantTimeCompare(dkHash, keyHash) != 0
-	return keyComp && hashComp, nil
+	return subtle.ConstantTimeCompare(key, pass) != 0, nil
 }
