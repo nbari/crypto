@@ -22,10 +22,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-    if !ok {
-       log.Fatal("Could not verify...")
-       return
-    }
+	if !ok {
+		log.Fatal("Could not verify...")
+		return
+	}
 
 }
 ```
