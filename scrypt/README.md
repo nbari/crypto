@@ -26,7 +26,6 @@ func main() {
 		log.Fatal("Could not verify...")
 		return
 	}
-
 }
 ```
 
