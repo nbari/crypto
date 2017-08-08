@@ -67,25 +67,22 @@ func Verify(password string, dk []byte) (bool, error) {
 
 	// Get the params
 	var N, r, p int32
+	paramIndex := keylen + len(salt)
 
-	NPad := keylen + 16 + 4
-	rPad := NPad + 4
-	pPad := rPad + 4
-
-	// byte for N
-	err := binary.Read(bytes.NewReader(dk[keylen+16:NPad]), binary.LittleEndian, &N)
+	// 4 bytes for N
+	err := binary.Read(bytes.NewReader(dk[paramIndex:paramIndex+4]), binary.LittleEndian, &N)
 	if err != nil {
 		return false, err
 	}
 
-	// byte for r
-	err = binary.Read(bytes.NewReader(dk[NPad:rPad]), binary.LittleEndian, &r)
+	// 4 bytes for r
+	err = binary.Read(bytes.NewReader(dk[paramIndex+4:paramIndex+8]), binary.LittleEndian, &r)
 	if err != nil {
 		return false, err
 	}
 
-	// byte for p
-	err = binary.Read(bytes.NewReader(dk[rPad:pPad]), binary.LittleEndian, &p)
+	// 4 bytes for p
+	err = binary.Read(bytes.NewReader(dk[paramIndex+8:paramIndex+12]), binary.LittleEndian, &p)
 	if err != nil {
 		return false, err
 	}
